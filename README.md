@@ -3,6 +3,8 @@ Stock Exchange Simulator
 
 Very rudimentar python server/client application to simulate a stock exchange system.
 
+Communication between the server and the client is done via [sockets](https://docs.oracle.com/javase/tutorial/networking/sockets/definition.html).
+
 Requirements
 ------------
 * Python 2.7.10 <https://www.python.org/downloads/release/python-2710/>
