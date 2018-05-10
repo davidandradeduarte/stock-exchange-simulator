@@ -1,0 +1,133 @@
+#!/usr/bin/python
+import socket
+import os
+from time import gmtime, strftime
+from lib.serverfuncs import *
+from classes.ServerCodes import ServerCodes
+from classes.StockBrokerQuotes import StockBrokerQuotes
+from classes.Transaction import Transaction
+from config import *
+
+os.system('clear')
+stockBrokers = initStockBrokers()
+companies = initCompanies()
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_address = ('localhost', 10000)
+sock.bind(server_address)
+sock.listen(1)
+
+while True:
+    connection, client_address = sock.accept()
+    try:
+        while True:
+            data = connection.recv(SOCKET_DATA_SIZE)
+
+            serverCode = data
+            if len(data.split(';')) > 1:
+                serverCode = data.split(';')[0]
+
+            if serverCode == ServerCodes.DetermineStockBroker:
+                id = randomStockBroker()
+                stockBroker = stockBrokers[id]
+                data = "%s;%s;%s" % (
+                    stockBroker.id, stockBroker.name, stockBroker.capital)
+                connection.sendall(data)
+            elif serverCode == ServerCodes.ListMarket:
+                data = listMarket(companies)
+                connection.sendall(data)
+            elif serverCode == ServerCodes.ListMarketWithGoBack:
+                data = listMarket(companies, True)
+                connection.sendall(data)
+            elif serverCode == ServerCodes.Buy:
+                fields = data.split(';')
+
+                companyId = int(fields[1])
+                quantity = int(fields[2])
+                stockBrokerId = int(fields[3])
+                company = companies[companyId]
+                stockBroker = stockBrokers[stockBrokerId]
+
+                if company.stock - quantity >= 0:
+                    transaction = quantity * company.quote
+                    if stockBroker.capital > transaction:
+                        company.stock - quantity
+                        stockBroker.capital -= transaction
+
+                        companyExists = False
+                        for sbq in stockBroker.quotes:
+                            if(sbq.company.id == company.id):
+                                companyExists = True
+                                sbq.quantity += quantity
+
+                        if not companyExists:
+                            stockBroker.quotes.append(
+                                StockBrokerQuotes(company, quantity))
+
+                        stockBroker.transactions.append(
+                            Transaction(company, stockBroker, "Buy", company.quote, quantity, strftime("%Y-%m-%d %H:%M:%S", gmtime())))
+                        data = "Successful transaction. %s stock exchanges purchased from %s." % (
+                            quantity, company.name)
+                    else:
+                        data = "Transaction canceled. There's not enough capital for the purchase."
+                else:
+                    data = "Transaction canceled. There are not enough stock to complete the purchase."
+                connection.sendall(data)
+            elif serverCode == ServerCodes.Sell:
+
+                pass
+            elif serverCode == ServerCodes.UpdateStockBroker:
+                fields = data.split(';')
+                stockBrokerId = int(fields[1])
+                stockBroker = stockBrokers[stockBrokerId]
+                data = "%s;%s;%s" % (
+                    stockBroker.id, stockBroker.name, stockBroker.capital)
+                connection.sendall(data)
+            elif serverCode == ServerCodes.NumberOfCompanies:
+                data = str(len(companies))
+                connection.sendall(data)
+            elif serverCode == ServerCodes.GetStockBrokerQuotes:
+                fields = data.split(';')
+                stockBrokerId = int(fields[1])
+                stockBroker = stockBrokers[stockBrokerId]
+                data = ""
+                i = 0
+                end = len(stockBroker.quotes)
+                for sbQuote in stockBroker.quotes:
+                    i += 1
+                    if i == end:
+                        data += "%s,%s" % (sbQuote.company.id,
+                                           sbQuote.quantity)
+                    else:
+                        data += "%s,%s;" % (sbQuote.company.id,
+                                            sbQuote.quantity)
+                connection.sendall(data)
+            elif serverCode == ServerCodes.GetStockBrokerTransactions:
+                fields = data.split(';')
+                stockBrokerId = int(fields[1])
+                stockBroker = stockBrokers[stockBrokerId]
+                data = ""
+                i = 0
+                end = len(stockBroker.transactions)
+                for t in stockBroker.transactions:
+                    i += 1
+                    if i == end:
+                        data += "%s,%s,%s,%s,%s" % (t.company.id,
+                                                    t.action, t.value, t.quantity, t.date)
+                    else:
+                        data += "%s,%s,%s,%s,%s;" % (t.company.id,
+                                                     t.action, t.value, t.quantity, t.date)
+                connection.sendall(data)
+            elif serverCode == ServerCodes.GetCompany:
+                fields = data.split(';')
+                companyId = int(fields[1])
+                company = companies[companyId]
+                data = "%s;%s;%s;%s;%s;%s" % (
+                    company.id, company.name, company.sector, company.quote, company.marketValue, company.stock)
+                connection.sendall(data)
+            else:
+                # no more data
+                break
+
+    finally:
+        pass
