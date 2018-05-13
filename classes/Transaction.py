@@ -5,7 +5,7 @@ class Transaction:
 
     company = None
     stockBroker = None
-    action = 0
+    action = ""
     value = 0
     quantity = 0
     date = ""

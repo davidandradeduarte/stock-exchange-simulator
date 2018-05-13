@@ -45,40 +45,43 @@ def updateStockBroker(sock, stockBroker):
     request = '%s;%s' % (ServerCodes.GetStockBrokerQuotes, stockBroker.id)
     sock.sendall(request)
     data = sock.recv(SOCKET_DATA_SIZE)
-    fields = data.split(';')
-    stockBroker.quotes = []
-    for sb in fields:
-        sbQuote = sb.split(',')
-        companyId = sbQuote[0]
-        quantity = int(sbQuote[1])
+    if not data == " ":
+        fields = data.split(';')
+        stockBroker.quotes = []
+        for sb in fields:
+            sbQuote = sb.split(',')
+            companyId = sbQuote[0]
+            quantity = int(sbQuote[1])
 
-        request = '%s;%s' % (ServerCodes.GetCompany, companyId)
-        sock.sendall(request)
-        data = sock.recv(SOCKET_DATA_SIZE)
-        companyFields = data.split(';')
-        stockBroker.quotes.append(
-            StockBrokerQuotes(Company(int(companyFields[0]), companyFields[1], companyFields[2], int(
-                companyFields[3]), int(companyFields[4]), int(companyFields[5])), quantity))
+            request = '%s;%s' % (ServerCodes.GetCompany, companyId)
+            sock.sendall(request)
+            data = sock.recv(SOCKET_DATA_SIZE)
+            companyFields = data.split(';')
+            stockBroker.quotes.append(
+                StockBrokerQuotes(Company(int(companyFields[0]), companyFields[1], companyFields[2], int(
+                    companyFields[3]), int(companyFields[4]), int(companyFields[5])), quantity))
 
     request = '%s;%s' % (
         ServerCodes.GetStockBrokerTransactions, stockBroker.id)
     sock.sendall(request)
     data = sock.recv(SOCKET_DATA_SIZE)
-    fields = data.split(';')
-    stockBroker.transactions = []
-    for t in fields:
-        transactionFields = t.split(',')
-        companyId = transactionFields[0]
-        action = transactionFields[1]
-        value = int(transactionFields[2])
-        quantity = int(transactionFields[3])
-        date = transactionFields[4]
-        request = '%s;%s' % (ServerCodes.GetCompany, companyId)
-        sock.sendall(request)
-        data = sock.recv(SOCKET_DATA_SIZE)
-        companyFields = data.split(';')
-        stockBroker.transactions.append(Transaction(Company(int(companyFields[0]), companyFields[1], companyFields[2], int(
-            companyFields[3]), int(companyFields[4]), int(companyFields[5])), stockBroker, action, value, quantity, date))
+    if not data == " ":
+        fields = data.split(';')
+        stockBroker.transactions = []
+
+        for t in fields:
+            transactionFields = t.split(',')
+            companyId = transactionFields[0]
+            action = transactionFields[1]
+            value = int(transactionFields[2])
+            quantity = int(transactionFields[3])
+            date = transactionFields[4]
+            request = '%s;%s' % (ServerCodes.GetCompany, companyId)
+            sock.sendall(request)
+            data = sock.recv(SOCKET_DATA_SIZE)
+            companyFields = data.split(';')
+            stockBroker.transactions.append(Transaction(Company(int(companyFields[0]), companyFields[1], companyFields[2], int(
+                companyFields[3]), int(companyFields[4]), int(companyFields[5])), stockBroker, action, value, quantity, date))
 
     return stockBroker
     # except:
@@ -133,8 +136,8 @@ def listQuotes(stockBroker):
 def listTransactions(stockBroker):
     print "Your Transactions:\n"
     for t in stockBroker.transactions:
-        print "Company: %s; Quantity: %s; Date: %s" % (
-            t.company.name, t.quantity, t.date)
+        print "Action: %s; Company: %s; Quantity: %s; Date: %s" % (
+            t.action, t.company.name, t.quantity, t.date)
 
 
 def printStockBrokerInfo(stockBroker):

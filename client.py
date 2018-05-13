@@ -56,26 +56,41 @@ while True:
                 except:
                     print "Invalid option."
             os.system('clear')
+            printStockBrokerInfo(stockBroker)
             buy(sock, companyId, quantity, stockBroker.id)
             stockBroker = updateStockBroker(sock, stockBroker)
     elif action == ClientCodes.Sell:
+        os.system('clear')
         printStockBrokerInfo(stockBroker)
         listMarket(sock, True)
+        goBack = False
         while True:
             try:
                 companyId = input('Company ID: ') - 1
-                break
+                if(companyId >= -1 and companyId < nOfCompanies):
+                    if companyId == -1:
+                        goBack = True
+                    break
+                else:
+                    print "Invalid option."
             except:
                 print "Invalid option."
-        while True:
-            try:
-                quantity = input('Quantity: ')
-                break
-            except:
-                print "Invalid option."
-        os.system('clear')
-        sell(sock, companyId, quantity, stockBroker.id)
-        stockBroker = updateStockBroker(sock, stockBroker)
+        if goBack:
+            os.system('clear')
+        else:
+            while True:
+                try:
+                    quantity = input('Quantity: ')
+                    if(quantity > 0):
+                        break
+                    else:
+                        print "Invalid option."
+                except:
+                    print "Invalid option."
+            os.system('clear')
+            printStockBrokerInfo(stockBroker)
+            sell(sock, companyId, quantity, stockBroker.id)
+            stockBroker = updateStockBroker(sock, stockBroker)
     elif action == ClientCodes.ListQuotes:
         os.system('clear')
         printStockBrokerInfo(stockBroker)

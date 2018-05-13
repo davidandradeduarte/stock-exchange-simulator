@@ -66,7 +66,7 @@ while True:
 
                         stockBroker.transactions.append(
                             Transaction(company, stockBroker, "Buy", company.quote, quantity, strftime("%Y-%m-%d %H:%M:%S", gmtime())))
-                        data = "Successful transaction. %s stock exchanges purchased from %s." % (
+                        data = "Successful transaction. %s stock exchange(s) purchased from %s." % (
                             quantity, company.name)
                     else:
                         data = "Transaction canceled. There's not enough capital for the purchase."
@@ -74,8 +74,53 @@ while True:
                     data = "Transaction canceled. There are not enough stock to complete the purchase."
                 connection.sendall(data)
             elif serverCode == ServerCodes.Sell:
+                fields = data.split(';')
 
-                pass
+                companyId = int(fields[1])
+                quantity = int(fields[2])
+                stockBrokerId = int(fields[3])
+                company = companies[companyId]
+                stockBroker = stockBrokers[stockBrokerId]
+
+                companyExists = False
+                sbQuote = None
+                sbqId = 0
+                i = 0
+                for sbq in stockBroker.quotes:
+                    if(sbq.company.id == company.id):
+                        companyExists = True
+                        sbQuote = sbq
+                        sbqId = i
+                    i += 1
+
+                if not companyExists:
+                    # terminate
+                    data = "Transaction canceled. You don't own any quotes from %s." % company.name
+                else:
+                    if sbQuote.quantity - quantity < 0:
+                        data = "Transaction canceled. You can't sell %s quotes from %s.\nYou only own %s quote(s) from this company." % (
+                            str(quantity), company.name, str(sbQuote.quantity))
+                    else:
+                        variation = (
+                            (float(company.quote) - float(company.marketValue)) / float(company.marketValue)) * 100
+                        if variation > 10 or variation < -10:
+                            if variation > 10:
+                                data = "Transaction canceled. Value of variation greater than 10%."
+                            elif variation < -10:
+                                data = "Transaction canceled. Value of variation less than 10%."
+                        else:
+                            finalQtt = stockBroker.quotes[sbqId].quantity - quantity
+                            if finalQtt == 0:
+                                stockBroker.quotes.pop(sbqId)
+                            else:
+                                stockBroker.quotes[sbqId].quantity = finalQtt
+                            stockBroker.capital += company.quote * quantity
+                            company.stock += quantity
+                            stockBroker.transactions.append(
+                                Transaction(company, stockBroker, "Sell", company.quote, quantity, strftime("%Y-%m-%d %H:%M:%S", gmtime())))
+                            data = "Successful transaction. %s stock exchange(s) sold to %s." % (
+                                quantity, company.name)
+                connection.sendall(data)
             elif serverCode == ServerCodes.UpdateStockBroker:
                 fields = data.split(';')
                 stockBrokerId = int(fields[1])
@@ -90,7 +135,7 @@ while True:
                 fields = data.split(';')
                 stockBrokerId = int(fields[1])
                 stockBroker = stockBrokers[stockBrokerId]
-                data = ""
+                data = " "
                 i = 0
                 end = len(stockBroker.quotes)
                 for sbQuote in stockBroker.quotes:
@@ -106,7 +151,7 @@ while True:
                 fields = data.split(';')
                 stockBrokerId = int(fields[1])
                 stockBroker = stockBrokers[stockBrokerId]
-                data = ""
+                data = " "
                 i = 0
                 end = len(stockBroker.transactions)
                 for t in stockBroker.transactions:
