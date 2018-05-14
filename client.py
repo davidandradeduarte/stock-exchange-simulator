@@ -15,7 +15,6 @@ stockBroker = determineStockBroker(sock)
 sayHello(stockBroker.name, stockBroker.capital)
 nOfCompanies = numberOfCompanies(sock)
 
-
 while True:
     while True:
         try:
@@ -104,6 +103,7 @@ while True:
         printStockBrokerDetails(stockBroker)
     elif action == ClientCodes.Exit:
         print '\nThank you for using our service. See you next time.'
+        sock.close()
         exit(0)
     else:
         print "Invalid option."

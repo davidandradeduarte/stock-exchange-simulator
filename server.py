@@ -1,6 +1,8 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 import socket
 import os
+from threading import Thread, active_count
 from time import gmtime, strftime
 from lib.serverfuncs import *
 from classes.ServerCodes import ServerCodes
@@ -15,13 +17,20 @@ companies = initCompanies()
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_address = ('localhost', 10000)
 sock.bind(server_address)
-sock.listen(1)
+print 'server '
 
-while True:
-    connection, client_address = sock.accept()
-    try:
+
+class Server(Thread):
+
+    connection = None
+
+    def __init__(self, connection):
+        self.connection = connection
+        Thread.__init__(self)
+
+    def run(self):
         while True:
-            data = connection.recv(SOCKET_DATA_SIZE)
+            data = self.connection.recv(SOCKET_DATA_SIZE)
 
             serverCode = data
             if len(data.split(';')) > 1:
@@ -32,13 +41,13 @@ while True:
                 stockBroker = stockBrokers[id]
                 data = "%s;%s;%s" % (
                     stockBroker.id, stockBroker.name, stockBroker.capital)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.ListMarket:
                 data = listMarket(companies)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.ListMarketWithGoBack:
                 data = listMarket(companies, True)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.Buy:
                 fields = data.split(';')
 
@@ -72,7 +81,7 @@ while True:
                         data = "Transaction canceled. There's not enough capital for the purchase."
                 else:
                     data = "Transaction canceled. There are not enough stock to complete the purchase."
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.Sell:
                 fields = data.split(';')
 
@@ -120,17 +129,17 @@ while True:
                                 Transaction(company, stockBroker, "Sell", company.quote, quantity, strftime("%Y-%m-%d %H:%M:%S", gmtime())))
                             data = "Successful transaction. %s stock exchange(s) sold to %s." % (
                                 quantity, company.name)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.UpdateStockBroker:
                 fields = data.split(';')
                 stockBrokerId = int(fields[1])
                 stockBroker = stockBrokers[stockBrokerId]
                 data = "%s;%s;%s" % (
                     stockBroker.id, stockBroker.name, stockBroker.capital)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.NumberOfCompanies:
                 data = str(len(companies))
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.GetStockBrokerQuotes:
                 fields = data.split(';')
                 stockBrokerId = int(fields[1])
@@ -146,7 +155,7 @@ while True:
                     else:
                         data += "%s,%s;" % (sbQuote.company.id,
                                             sbQuote.quantity)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.GetStockBrokerTransactions:
                 fields = data.split(';')
                 stockBrokerId = int(fields[1])
@@ -162,17 +171,26 @@ while True:
                     else:
                         data += "%s,%s,%s,%s,%s;" % (t.company.id,
                                                      t.action, t.value, t.quantity, t.date)
-                connection.sendall(data)
+                self.connection.sendall(data)
             elif serverCode == ServerCodes.GetCompany:
                 fields = data.split(';')
                 companyId = int(fields[1])
                 company = companies[companyId]
                 data = "%s;%s;%s;%s;%s;%s" % (
                     company.id, company.name, company.sector, company.quote, company.marketValue, company.stock)
-                connection.sendall(data)
+                self.connection.sendall(data)
             else:
                 # no more data
+                connection.close()
                 break
 
-    finally:
-        pass
+
+while True:
+    sock.listen(1)
+    connection, client_address = sock.accept()
+    if active_count() <= 10:
+        thread = Server(connection)
+        thread.start()
+    else:
+        data = "Error. Maximum number of stock brokers connected (10)"
+        connection.sendall(data)
