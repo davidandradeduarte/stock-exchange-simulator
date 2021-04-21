@@ -1,7 +1,7 @@
 Stock Exchange Simulator 
 ============
 
-Very rudimentar python server/client application to simulate a stock exchange system.
+Very rudimentar python client/server application to simulate a stock exchange system.
 
 Communication between the server and the client is done via [sockets](https://docs.oracle.com/javase/tutorial/networking/sockets/definition.html).
 
